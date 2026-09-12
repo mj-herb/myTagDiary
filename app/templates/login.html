@@ -1,0 +1,43 @@
+{% extends "base.html" %} {% block title %}Login{% endblock %} {% block content
+%}
+
+<form
+  method="post"
+  action="/login"
+  class="p-4 border rounded mx-auto mt-5"
+  style="max-width: 320px"
+>
+  <h2 class="mb-4 text-center">Login</h2>
+  <div class="mb-3">
+    <input
+      type="text"
+      name="username"
+      class="form-control"
+      placeholder="Username"
+      required
+      autofocus
+    />
+  </div>
+  <div class="mb-3">
+    <input
+      type="password"
+      name="password"
+      class="form-control"
+      placeholder="Password"
+      required
+    />
+  </div>
+  <button type="submit" class="btn btn-primary w-100">Log In</button>
+  <div class="text-center mt-3">
+    Don't have an account? <a href="/register">Sign up here</a>
+  </div>
+
+  {% if error %}
+  <div class="alert alert-danger">{{ error }}</div>
+  {% endif %}
+</form>
+
+<!-- path로 해야한다. https://bnmy6581.tistory.com/298 참고-->
+<script src="{{ url_for('static', path='js/login1.js') }}"></script>
+
+{% endblock %}

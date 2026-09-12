@@ -1,0 +1,605 @@
+{% extends "base.html" %} {% block title %}diary{% endblock %} {% block
+content%} {% if diary_json %}
+<section class="section1">
+  <div class="wrapper">
+    <div class="date"><h2>{{date}}</h2></div>
+    <div class="select-zone">
+      <div id="selection-weather-container"></div>
+    </div>
+  </div>
+</section>
+<!-- 시간별 일기 작성 공간 -->
+<section class="section2">
+  <div id="diaryDiv" class="diaryDiv">
+    <div id="diary-left" class="diary-left"></div>
+    <div id="diary-right" class="diary-right"></div>
+  </div>
+</section>
+<script>
+  const diary = {{ diary_json | tojson | safe }};
+  const diaryExists = {{ 'true' if diary_json else 'false' }};
+
+  //layout
+  const date = "{{ date }}";
+  const diary_left = document.getElementById("diary-left");
+  const diary_right = document.getElementById("diary-right");
+  const diary_right_grid = document.createElement("div");
+  diary_right_grid.className = "diary-right-grid";
+
+  //content
+  const add_content_btn = document.createElement("button");
+  add_content_btn.className = "add-content-btn material-symbols-outlined";
+  add_content_btn.textContent = "add";
+  add_content_btn.addEventListener("click", add_content_btn_click, false);
+
+  //save button
+  const save_btn = document.createElement("button");
+  save_btn.className = "save-btn material-symbols-outlined";
+  save_btn.textContent = "save";
+  save_btn.type = "button";
+
+  const weatherContainer = document.getElementById("selection-weather-container");
+  weatherContainer.innerHTML = `<strong>${diary.countryName}</strong> / <strong>${diary.city}</strong>`;
+
+  const hourList = JSON.parse(diary.diaryWeather);
+  // const diaryEntries = JSON.parse(diary.diaryEntries);
+  console.log("hourList : ", hourList);
+  console.log(typeof(hourList));
+  const diaryDiv = document.getElementById("diaryDiv");
+  diaryDiv.innerHTML = ""; // 초기화
+
+  //locale에 관한 시간,온도,컨디션
+  hourList.forEach((hour) => {
+    const time = document.createElement("p");
+    time.className = "time";
+    time.textContent = hour.datetime;
+
+    const div = document.createElement("div");
+    div.className = "diary_time_div";
+
+    const weather_temp = document.createElement("p");
+    weather_temp.className = "weather_temp";
+    // weather_temp.textContent = `${hour.temp}°C`;
+    weather_temp.textContent = hour.temp + "°C";
+
+    const weather_conditions = document.createElement("p");
+    weather_conditions.className = "weather_conditions";
+    // weather_conditions.textContent = `${hour.condition}`;
+    weather_conditions.textContent = hour.condition;
+
+    div.appendChild(time);
+
+    div.appendChild(weather_temp);
+    div.appendChild(weather_conditions);
+
+    diary_left.appendChild(div);
+  });
+
+  diaryDiv.appendChild(diary_left);
+  diaryDiv.appendChild(diary_right);
+  diary_right.appendChild(diary_right_grid);
+
+  div_add_content_btn = document.createElement("div");
+
+  diary_right_grid.appendChild(div_add_content_btn);
+  div_add_content_btn.appendChild(add_content_btn);
+
+  diary.diaryEntries.forEach((diaryEntry) => {
+    console.log(diaryEntry);
+    const content = document.createElement("div");
+    content.className = "content";
+
+    const set_time = document.createElement("input");
+    set_time.className = "set-time";
+    set_time.type = "time";
+    set_time.value = diaryEntry.time;
+
+    const memo = document.createElement("input");
+    memo.className = "memo";
+    memo.type = "text";
+    memo.value = diaryEntry.memo;
+
+    const addTag_btn = document.createElement("button");
+    addTag_btn.className = "addTag-btn material-symbols-outlined";
+    addTag_btn.textContent = "tag";
+    addTag_btn.addEventListener("click", addTag_btn_click, false);
+
+    const delete_btn = document.createElement("button");
+    delete_btn.className = "delete-btn material-symbols-outlined";
+    delete_btn.textContent = "delete";
+    delete_btn.addEventListener("click", delete_btn_click, false);
+
+    function addTag_btn_click(event) {
+      const btn = event.currentTarget;
+      const parent = btn.parentNode;
+      const tag = document.createElement("input");
+      tag.className = "tag";
+      tag.type = "text";
+      parent.appendChild(tag);
+    }
+
+    function delete_btn_click(event) {
+      const btn = event.currentTarget;
+      const parent = btn.parentNode;
+      if (parent) {
+        parent.remove();
+      }
+    }
+
+    //tag를 memo에서 불러오면 안됨. diaryEntry에서 불러와야함...? 아님 링크 다녀와서 봐야함
+    diary_right_grid.appendChild(content);
+    content.appendChild(set_time);
+    content.appendChild(memo);
+
+    console.log("diaryEntry: ", diaryEntry);
+    diaryEntry.tagList.forEach(tag => {
+      console.log("tag : " , tag);
+      const tagValue = document.createElement("input");
+      tagValue.className = "tag";
+      tagValue.type = "text";
+      tagValue.value = tag;
+      content.appendChild(tagValue);
+    })
+    content.appendChild(addTag_btn);
+    content.appendChild(delete_btn);
+
+    if (!document.querySelector(".save-btn")) {
+      const diary_right_grid_bottom = document.createElement("div");
+      diary_right.appendChild(save_btn);
+    }
+  });
+
+  function add_content_btn_click() {
+    const content = document.createElement("div");
+    content.className = "content";
+
+    const set_time = document.createElement("input");
+    set_time.className = "set-time";
+    set_time.type = "time";
+
+    const memo = document.createElement("input");
+    memo.className = "memo";
+    memo.type = "text";
+
+    const addTag_btn = document.createElement("button");
+    addTag_btn.className = "addTag-btn material-symbols-outlined";
+    addTag_btn.textContent = "tag";
+    addTag_btn.addEventListener("click", addTag_btn_click, false);
+
+    const delete_btn = document.createElement("button");
+    delete_btn.className = "delete-btn material-symbols-outlined";
+    delete_btn.textContent = "delete";
+    delete_btn.addEventListener("click", delete_btn_click, false);
+
+    function addTag_btn_click(event) {
+      const btn = event.currentTarget;
+      const parent = btn.parentNode;
+      const tag = document.createElement("input");
+      tag.className = "tag";
+      tag.type = "text";
+      parent.appendChild(tag);
+    }
+
+    function delete_btn_click(event) {
+      const btn = event.currentTarget;
+      const parent = btn.parentNode;
+      if (parent) {
+        parent.remove();
+      }
+    }
+
+    diary_right_grid.appendChild(content);
+    content.appendChild(set_time);
+    content.appendChild(memo);
+    content.appendChild(addTag_btn);
+    content.appendChild(delete_btn);
+
+    if (!document.querySelector(".save-btn")) {
+      const diary_right_grid_bottom = document.createElement("div");
+      diary_right.appendChild(save_btn);
+    }
+  }
+
+  function save_collect_data() {
+    const diary_date = date;
+    const weather_data = [];
+    const city = diary.city;
+    const countryIso2 = diary.country_iso2;
+    const countryName = diary.country_name;
+
+    diary_left.querySelectorAll(".diary_time_div").forEach((div) => {
+      weather_data.push({
+        datetime: div.querySelector(".time").textContent,
+        // const tempValue = tempText.match(/-?\d+(\.\d+)?/)?.[0] ?? tempText;
+        temp: div
+          .querySelector(".weather_temp")
+          .textContent.match(/-?\d+(\.\d+)?/g)[0],
+        condition: div.querySelector(".weather_conditions").textContent,
+      });
+    });
+
+    const memos = [];
+    diary_right_grid.querySelectorAll(".content").forEach((contentDiv) => {
+      // console.log(`tag : ${contentDiv.querySelector(".tag").value}`);
+      const tagValues = Array.from(contentDiv.querySelectorAll(".tag")).map(tagElem => tagElem.value);
+      memos.push({
+        time: contentDiv.querySelector(".set-time").value,
+        memo: contentDiv.querySelector(".memo").value,
+        tag: tagValues
+      });
+    });
+
+    console.log(weather_data);
+    console.log(`memos :`, memos);
+
+    return {
+      country_iso2: countryIso2,
+      country_name: countryName,
+      city: city,
+      diary_date: diary_date,
+      weather: weather_data,
+      memos: memos,
+    };
+  }
+
+  save_btn.addEventListener("click", () => {
+    // console.log("save_collect_data called");
+    const diary_data = save_collect_data();
+    // console.log("save_collect_data function called");
+    fetch("/api/diary/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }, // 수정됨
+      body: JSON.stringify(diary_data),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to save diary");
+        alert("Diary saved successfully!");
+      })
+      .catch((err) => alert(err.message));
+  });
+</script>
+
+<!-- diary 없을떄 -->
+{% else %}
+<section class="section1">
+  <div class="wrapper">
+    <div class="date"><h2>{{date}}</h2></div>
+    <div class="select-zone">
+      <select id="country-select" name="country">
+        <option value="" selected disabled hidden>select country</option>
+        {% for country in countries %}
+        <option value="{{ country['ISO2'] }}">
+          {{ country['Country Name'] }}
+        </option>
+        {% endfor %}
+      </select>
+      <select id="city-select" name="city">
+        <option value="{{ city }}">Select city</option>
+      </select>
+      <button id="get-weather-btn" disabled>click</button>
+
+      <div id="selection-weather-container"></div>
+    </div>
+  </div>
+</section>
+<!-- 시간별 일기 작성 공간 -->
+<section class="section2">
+  <div id="diaryDiv" class="diaryDiv">
+    <div id="diary-left" class="diary-left"></div>
+    <div id="diary-right" class="diary-right"></div>
+  </div>
+</section>
+
+<script>
+  let city, countryIso2, countryName;
+
+  //layout
+  const countrySelect = document.getElementById("country-select");
+  const citySelect = document.getElementById("city-select");
+  const btn = document.getElementById("get-weather-btn");
+  const date = "{{ date }}";
+  const diary_left = document.getElementById("diary-left");
+  const diary_right = document.getElementById("diary-right");
+  const diary_right_grid = document.createElement("div");
+  diary_right_grid.className = "diary-right-grid";
+
+  //content
+  const add_content_btn = document.createElement("button");
+  add_content_btn.className = "add-content-btn material-symbols-outlined";
+  add_content_btn.textContent = "add";
+  add_content_btn.addEventListener("click", add_content_btn_click, false);
+
+  //save button
+  const save_btn = document.createElement("button");
+  save_btn.className = "save-btn material-symbols-outlined";
+  save_btn.textContent = "save";
+  save_btn.type = "button";
+
+  countrySelect.addEventListener("change", function () {
+    btn.disabled = true;
+    const countryIso2 = this.value;
+
+    citySelect.innerHTML = '<option value="">Select city</option>';
+
+    if (!countryIso2) return;
+
+    fetch(`/api/cities?country_iso2=${encodeURIComponent(countryIso2)}`)
+      .then((response) => response.json())
+      .then((cities) => {
+        cities.forEach((cityName) => {
+          const option = document.createElement("option");
+          option.value = cityName;
+          option.textContent = cityName;
+          citySelect.appendChild(option);
+        });
+      })
+      .catch((error) => console.error("Error fetching cities:", error));
+  });
+
+  citySelect.addEventListener("change", function () {
+    btn.disabled = !this.value;
+  });
+
+  btn.addEventListener("click", function () {
+    const city = citySelect.value;
+    const countryIso2 = countrySelect.value;
+    const countryName = countrySelect.options[countrySelect.selectedIndex].text;
+
+    if (!city || !countryIso2) {
+      alert("Please select both country and city.");
+      return;
+    }
+
+    const url = `/api/weather/history?city=${encodeURIComponent(
+      city
+    )}&country_iso2=${encodeURIComponent(
+      countryIso2
+    )}&date=${encodeURIComponent(date)}`;
+
+    fetch(url)
+      .then((response) => {
+        if (!response.ok) throw new Error(response.statusText);
+        return response.json();
+      })
+      .then((data) => {
+        console.log(data);
+        // hour_list log 출력
+        countrySelect.style.display = "none";
+        citySelect.style.display = "none";
+        btn.style.display = "none";
+
+        const weatherContainer = document.getElementById(
+          "selection-weather-container"
+        );
+        weatherContainer.innerHTML = `<strong>${countryName}</strong> / <strong>${city}</strong>`;
+
+        const hourList = data;
+        const diaryDiv = document.getElementById("diaryDiv");
+        diaryDiv.innerHTML = ""; // 초기화
+
+        hourList.forEach((hour) => {
+          const time = document.createElement("p");
+          time.className = "time";
+          time.textContent = hour.datetime;
+
+          const div = document.createElement("div");
+          div.className = "diary_time_div";
+
+          const weather_temp = document.createElement("p");
+          weather_temp.className = "weather_temp";
+          weather_temp.textContent = `${hour.temp}°C`;
+
+          const weather_conditions = document.createElement("p");
+          weather_conditions.className = "weather_conditions";
+          weather_conditions.textContent = `${hour.conditions}`;
+
+          div.appendChild(time);
+
+          div.appendChild(weather_temp);
+          div.appendChild(weather_conditions);
+
+          diary_left.appendChild(div);
+        });
+        diaryDiv.appendChild(diary_left);
+        diaryDiv.appendChild(diary_right);
+        diary_right.appendChild(diary_right_grid);
+
+        div_add_content_btn = document.createElement("div");
+
+        diary_right_grid.appendChild(div_add_content_btn);
+        div_add_content_btn.appendChild(add_content_btn);
+
+        // diary_right.appendChild(content);
+        // content.appendChild(set_time);
+        // content.appendChild(memo);
+      });
+  });
+
+  function add_content_btn_click() {
+    console.log("add_content_btn_click");
+    const content = document.createElement("div");
+    content.className = "content";
+
+    const set_time = document.createElement("input");
+    set_time.className = "set-time";
+    set_time.type = "time";
+
+    const memo = document.createElement("input");
+    memo.className = "memo";
+    memo.type = "text";
+
+    const addTag_btn = document.createElement("button");
+    addTag_btn.className = "addTag-btn material-symbols-outlined";
+    addTag_btn.textContent = "tag";
+    addTag_btn.addEventListener("click", addTag_btn_click, false);
+
+    const delete_btn = document.createElement("button");
+    delete_btn.className = "delete-btn material-symbols-outlined";
+    delete_btn.textContent = "delete";
+    delete_btn.addEventListener("click", delete_btn_click, false);
+
+    function addTag_btn_click(event) {
+      const btn = event.currentTarget;
+      const parent = btn.parentNode;
+      const tag = document.createElement("input");
+      tag.className = "tag";
+      tag.type = "text";
+      parent.appendChild(tag);
+    }
+
+    function delete_btn_click(event) {
+      const btn = event.currentTarget;
+      const parent = btn.parentNode;
+      if (parent) {
+        parent.remove();
+      }
+    }
+
+    diary_right_grid.appendChild(content);
+    content.appendChild(set_time);
+    content.appendChild(memo);
+    content.appendChild(addTag_btn);
+    content.appendChild(delete_btn);
+
+    if (!document.querySelector(".save-btn")) {
+      const diary_right_grid_bottom = document.createElement("div");
+      diary_right.appendChild(save_btn);
+    }
+  }
+
+  //city 못불러옴
+  function save_collect_data() {
+    const diary_date = date;
+    // const city = city;
+    // const countryIso2 = countryIso2;
+    // const countryName = countryName;
+    const weather_data = [];
+    const city = citySelect.value;
+    const countryIso2 = countrySelect.value;
+    const countryName = countrySelect.options[countrySelect.selectedIndex].text;
+
+    diary_left.querySelectorAll(".diary_time_div").forEach((div) => {
+      weather_data.push({
+        datetime: div.querySelector(".time").textContent,
+        temp: div.querySelector(".weather_temp").textContent,
+        condition: div.querySelector(".weather_conditions").textContent,
+      });
+    });
+
+    const memos = [];
+    diary_right_grid.querySelectorAll(".content").forEach((contentDiv) => {
+      // console.log(`tag : ${contentDiv.querySelector(".tag").value}`);
+      const tagValues = Array.from(contentDiv.querySelectorAll(".tag")).map(
+        (tagElem) => tagElem.value
+      );
+      memos.push({
+        time: contentDiv.querySelector(".set-time").value,
+        memo: contentDiv.querySelector(".memo").value,
+        tag: tagValues,
+      });
+    });
+    console.log(`memos :`, memos);
+    return {
+      country_iso2: countryIso2,
+      country_name: countryName,
+      city: city,
+      diary_date: diary_date,
+      weather: weather_data,
+      memos: memos,
+    };
+  }
+
+  save_btn.addEventListener("click", () => {
+    // console.log("save_collect_data called");
+    const diary_data = save_collect_data();
+    // console.log("save_collect_data function called");
+    fetch("/api/diary/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" }, // 수정됨
+      body: JSON.stringify(diary_data),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to save diary");
+        alert("Diary saved successfully!");
+      })
+      .catch((err) => alert(err.message));
+  });
+</script>
+{% endif %}
+<style>
+  .section1 {
+    margin: 10px 30px;
+  }
+
+  .section2 {
+    margin: 10px 30px;
+  }
+
+  .wrapper {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+  }
+
+  .date {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .select-zone {
+    grid-column: 2 / 4;
+    grid-row: 1;
+  }
+
+  .diaryDiv {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 3fr;
+  }
+
+  .diary-left {
+    grid-column: 1;
+    grid-row: 1;
+    padding: 10px;
+  }
+
+  .diary-right {
+    grid-column: 2 / 4;
+    grid-row: 1;
+    padding: 10px;
+  }
+
+  .diary_time_div {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    border-style: dotted;
+    font-size: 10px;
+  }
+
+  .time {
+    grid-column: 1;
+    grid-row: 1;
+    margin: auto;
+  }
+
+  .weather_temp {
+    grid-column: 2;
+    grid-row: 1;
+    margin: auto;
+  }
+
+  .weather_conditions {
+    grid-column: 3 / 4;
+    grid-row: 1;
+    margin: auto;
+  }
+
+  .add-content-btn:hover {
+    background-color: rgb(206, 187, 245);
+  }
+
+  .save-btn {
+    bottom: 0;
+  }
+</style>
+{% endblock %}

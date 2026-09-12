@@ -1,0 +1,24 @@
+<!-- 캘린더에서 dot 저장버튼 눌렀을 시 생성되는 팝업창 -->
+{% extends "base.html" %} {% block title %}make DOT{% endblock %} {% block
+content %}
+<input type="text" id="input1" placeholder="DOT name" />
+<br />
+<input type="text" id="input2" placeholder="DOT describe" />
+<br />
+<button onclick="sendData()">확인</button>
+<script>
+  function sendData() {
+    const input1Value = document.getElementById("input1").value;
+    const input2Value = document.getElementById("input2").value;
+    // 부모 창으로 데이터 전달하는 로직 추가 (예: window.opener.myFunction(input1Value, input2Value))
+    if (
+      window.opener &&
+      !window.opener.closed &&
+      typeof window.opener.receiveDataFromPopup === "function"
+    ) {
+      window.opener.receiveDataFromPopup(input1Value, input2Value);
+    }
+    window.close();
+  }
+</script>
+{% endblock %}

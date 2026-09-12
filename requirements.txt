@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
+sqlmodel
+psycopg2
+passlib
+bcrypt
+redis
+python-jose[cryptography]
+passlib[bcrypt]
+requests
+pandas
+holidays
+pydantic

@@ -1,0 +1,954 @@
+{% extends "base.html" %} {% block title %}Calendar{% endblock %} {% block
+content %}
+<h2 class="h2">{{ year }}.{{ month }}</h2>
+<div class="calendar-body">
+  <div class="arrow-l">
+    <a href="{{ url_for('new_calendar', year=year, month=month - 1) }}">
+      <div class="material-symbols-outlined" id="arrow_back">
+        arrow_back_ios
+      </div>
+    </a>
+  </div>
+  <div class="cal-container">
+    <div class="calendar">
+      <div class="day-name red-font">Sun</div>
+      <div class="day-name">Mon</div>
+      <div class="day-name">Tue</div>
+      <div class="day-name">Wed</div>
+      <div class="day-name">Thu</div>
+      <div class="day-name">Fri</div>
+      <div class="day-name">Sat</div>
+
+      {% for dates in month_dates %} {% for date in dates %}
+      <div class="date-name" id="{{date}}">
+        <a href="{{ url_for('read_user_data', date=date) }}"> {{date.day}} </a>
+      </div>
+      {% endfor %} {% endfor %}
+    </div>
+  </div>
+  <div class="arrow-r">
+    <a href="{{ url_for('new_calendar', year=year, month=month + 1) }}">
+      <div class="material-symbols-outlined" id="arrow_forward">
+        arrow_forward_ios
+      </div>
+    </a>
+  </div>
+</div>
+<div id="calendar_below">
+  <span class="material-symbols-outlined search-icon" id="search-icon">
+    search
+  </span>
+  <span class="material-symbols-outlined add-dot-icon" id="add-dot-icon">
+    anchor
+  </span>
+</div>
+<div id="tagOrSearch"></div>
+<div id="dotSection"></div>
+<script>
+        // exist_dates안에있는 dates(str) 값과 div : date-name  값이 같으면 그곳에 check 아이콘 추가 해준다.
+        const existDates = JSON.parse(`{{ exist_dates | safe }}`);
+        console.log(existDates);
+        const arrowBack = document.getElementById("arrow-back");
+        const arrowForward = document.getElementById("arrow-forward");
+        const calendarBelow = document.getElementById("calendar_below");
+        const addDotIcon = document.getElementById("add-dot-icon");
+        const searchIcon = document.getElementById("search-icon");
+        const addTagIcon = document.getElementById("add-dot-icon");
+        const dotDataList = {{ (dot_data_list or []) | tojson | safe }};
+        console.log(dotDataList);
+        let dotClickSign = false;
+        let searchClickSign = false;
+
+        existDates.forEach((dates) => {
+          const date_div = document.getElementById(dates);
+          console.log(date_div);
+          const spanElem = document.createElement("span");
+          spanElem.className = "material-symbols-outlined";
+          spanElem.textContent = "done_all";
+          date_div.appendChild(spanElem);
+        });
+
+        // searchDot 검색기능 구현
+        // searchDot (돋보기) icon click시
+        searchIcon.addEventListener("click", clickSearchIcon, false);
+
+        let allTags, allTagsLength;
+        // add Dot(anchorIcon) 클릭시 발생 이벤트
+        addDotIcon.addEventListener("click", clickAddDotIcon, false);
+
+        let dotName, dotDescribe;
+        let addTagList = [];
+        function receiveDataFromPopup(name, describe) {
+          dotName = name;
+          dotDescribe = describe;
+          // 하단에 받은 값으로 처리하는 로직 작성
+          // tag중 skyblue색으로 칠한 tag만 찾기
+          for (let i = 0; i < allTagsLength; i++) {
+            if (allTags[i].style.backgroundColor == "skyblue") {
+              console.log("we have.....", allTags[i]);
+              addTagList.push({ tag_id: allTags[i].id });
+            }
+          }
+          // 최종 보낼 데이터
+          const dataToSend = {
+            name: dotName,
+            describe: dotDescribe,
+            tags: addTagList, // [{tag_id: 'tag1'}, {tag_id: 'tag2'}, ...]
+          };
+          console.log("addTagList", dataToSend);
+          dotFetchUrl = "/api/createDot";
+          pageReload = "/user/profile";
+
+          fetch(dotFetchUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(dataToSend),
+          })
+            .then((response) => {
+              if (!response.ok) throw new Error(response.statusText);
+              return response.json();
+            })
+            .then((data) => {
+              console.log("fetch success", data);
+              // page reload...
+              window.location.href = "/user/profile";
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+            });
+        }
+
+        async function selectTag() {
+          let url = `/api/selectTag`;
+          try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(response.statusText);
+            const data = await response.json();
+            console.log("Fetched tags:", data.tags);
+            return JSON.stringify(data.tags);
+          } catch (error) {
+            console.error("Error fetching tags:", error);
+            return null;
+          }
+        }
+
+
+      // 화면에 나의 dot 출력
+      let n = 1;
+      if (!Array.isArray(dotDataList)) {
+        console.warn("dotDataList is not an array, initializing empty array");
+        dotDataList = [];
+      } else {
+        console.log(dotDataList);
+        let pageSize = 3;
+        let currentPage = 1;
+
+        //renderPage and pagination
+        renderPage(currentPage, pageSize);
+
+      }
+
+  //---------------------------- function
+
+      // add dot icon click 시
+      async function clickAddDotIcon() {
+          const tagOrSearch = document.getElementById("tagOrSearch");
+          if (!dotClickSign) {
+            const tagList = [];
+            let addTagDiv = document.getElementById("addTagDiv");
+            // console.log(addTagDiv);
+            if (addTagDiv == null) {
+              addTagDiv = document.createElement("div");
+              addTagDiv.id = "addTagDiv";
+            }
+            const tagsJson = await selectTag();
+            dotClickSign = true;
+            console.log(dotClickSign);
+            addTagIcon.style.backgroundColor = "#D1AED4";
+            addTagDiv.style.backgroundColor = "#D1AED4";
+
+            if (tagsJson) {
+              const tags = JSON.parse(tagsJson);
+              tags.forEach((tag) => {
+                tagList.push(tag.name);
+              });
+              console.log(tagList);
+            }
+
+            tagList.forEach((tag) => {
+              const tagName = document.createElement("span");
+              const emptySpan = document.createElement("span");
+              tagName.className = "tag-name";
+              tagName.innerHTML = "&nbsp;" + tag + "&nbsp;";
+              tagName.id = tag;
+              emptySpan.innerHTML = "&nbsp;";
+
+              addTagDiv.appendChild(tagName);
+              addTagDiv.appendChild(emptySpan);
+            });
+            const createDotBtn = document.createElement("span");
+            createDotBtn.className = "material-symbols-outlined";
+            createDotBtn.id = "createDotBtn";
+            createDotBtn.textContent = "save";
+            addTagDiv.appendChild(createDotBtn);
+            tagOrSearch.appendChild(addTagDiv);
+
+            //일단 tag를 클릭해서 어떤 tag를 선택할지..
+            // tag를 클릭하면 색이 달라진다.
+            allTags = document.getElementsByClassName("tag-name");
+            allTagsLength = allTags.length;
+
+            for (let i = 0; i < allTagsLength; i++) {
+              console.log(allTags[i]);
+              allTags[i].addEventListener("click", tagClick, false);
+
+              function tagClick(event) {
+                console.log(event.target);
+                // const selectTag = event.target;
+                if (
+                  event.target.style.backgroundColor === "beige" ||
+                  event.target.style.backgroundColor === ""
+                ) {
+                  event.target.style.backgroundColor = "skyblue";
+                } else {
+                  event.target.style.backgroundColor = "beige";
+                }
+              }
+            }
+
+            // save button 을 누르면 dot제목을 적으라는 팝업이 뜨고 그것을 적으면 recievedatafrompopup에서 받는다.
+            createDotBtn.addEventListener("click", createAndSaveDot, false);
+            function createAndSaveDot() {
+              //main에서 router를 만들어줘야한다.
+              const popupWindow = window.open(
+                "/popup.html",
+                "myPopup",
+                "width=400,height=300,scrollbars=no"
+              );
+
+              // 팝업창이 제대로 열렸는지 확인 (브라우저 설정에 따라 열리지 않을 수 있음)
+              if (!popupWindow) {
+                alert("팝업 차단 기능으로 인해 팝업창이 열리지 않았습니다.");
+              }
+            }
+          } else {
+            dotClickSign = false;
+            addTagIcon.style.backgroundColor = "white";
+            addTagDiv.style.backgroundColor = "white";
+            if (addTagDiv) {
+              addTagDiv.innerHTML = "";
+            }
+          }
+        }
+
+      // dot search icon click 시
+      async function clickSearchIcon() {
+          const tagOrSearch = document.getElementById("tagOrSearch");
+          console.log('searchClicksign', searchClickSign);
+
+          //searchClickSign이 false라면...
+          if(!searchClickSign){
+            searchClickSign = !searchClickSign;
+            let searchDotDiv = document.getElementById("searchDotDiv")
+            // id 가 searchDotDiv인 것이 없다면..(null)
+            if(searchDotDiv == null){
+              searchDotDiv = document.createElement("div");
+              searchDotDiv.id = "searchDotDiv";
+            }
+            searchInput = document.createElement("input");
+            searchInput.id = "searchInput";
+            searchDotDiv.appendChild(searchInput);
+
+            searchBtn = document.createElement("button");
+            searchBtn.id = "searchBtn";
+            searchBtn.textContent = "search";
+            searchDotDiv.appendChild(searchBtn);
+
+            tagOrSearch.appendChild(searchDotDiv);
+
+            // Dot 검색!
+            searchBtn.addEventListener("click", clickSearchBtn, false);
+
+          }else{
+            searchClickSign = !searchClickSign;
+            if(searchDotDiv){
+              searchDotDiv.innerHTML = "";
+            }
+
+          }
+        }
+
+    // search할 dot keyword 입력 후 dot search button 클릭시
+      function clickSearchBtn() {
+              searchInputValue = searchInput.value;
+              let url = `/api/searchDot/${searchInputValue}`;
+              let searchDotSection = document.createElement('div');
+              searchDotSection.id = "searchDotSection";
+              searchDotSection.className = "dotSection";
+              searchDotDiv.appendChild(searchDotSection);
+              fetch(url, {
+                method: 'GET',
+              }).then(response => {
+                if(response.status == 200){
+                  console.log("status 200 ok!");
+                }
+                console.log("response: ", response);
+                return response.json();
+              }).then(data => {
+                // 검색한 dot이 넘어오면
+                let dotList = data.dotInfoList;
+                console.log("dotList : ", dotList);
+                searchInput.value = "";
+                  // 여기서부터 db의 dot 정보들을 search 창 아래에 출력해준다.
+                  // pagination 시작.
+                const pageSize = 3;
+                let currentPage = 1;
+
+                function searchDotRender(dotList, currentPage){
+                  // dotList.sort((a, b) => new Date(b.diaryEntries.diaryDate) - new Date(a.diaryEntries.diaryDate));
+                  const startIdx = (currentPage - 1) * pageSize;
+                  const endIdx = currentPage * pageSize;
+                  // dotDataList에서 startIdx부터 endIdx전까지 slice한다.
+                  const pageItems = dotList.slice(startIdx, endIdx);
+                  const dotSection = document.getElementById("searchDotSection");
+                  dotSection.innerHTML = ""
+
+                  const removeFindResultBtn = document.createElement("button");
+                  removeFindResultBtn.innerText = 'X';
+
+                  removeFindResultBtn.addEventListener("click",() => {
+                    dotSection.innerHTML = "";
+                  })
+
+                  dotSection.appendChild(removeFindResultBtn); //여기에 다 지우는 버튼
+
+                  pageItems.forEach(dot => {
+                    dot.diaryEntries.sort((a,b) => { return new Date(b.diaryDate) - new Date(a.diaryDate);});
+                    console.log(dotList);
+                    dotDiv = document.createElement("div");
+                    dotDiv.className = "dotDiv";
+                    dotDiv.id = "dotDiv"+":"+dot.dotId;
+                    let findAllDotDiv = document.createElement("div");
+                    let dotTagDiv = document.createElement("div");
+                    dotTagDiv.className = "dotTagDiv";
+                    let tags = dot.tags;
+                    let replies = dot.replyData;
+
+                    tags.forEach(tag => {
+                      let tagName = tag.name;
+                      let tagNameSpan = document.createElement("span");
+                      tagNameSpan.className = "tagNameSpan";
+                      tagNameSpan.innerHTML = "&nbsp;" + tagName + "&nbsp;";
+                      dotTagDiv.appendChild(tagNameSpan);
+                    })
+                    dotDiv.appendChild(dotTagDiv);
+
+                    const dotNameDiv = document.createElement("div");
+                    const dotName = dot.dotName;
+                    dotNameDiv.innerText = dotName;
+                    dotDiv.appendChild(dotNameDiv);
+
+
+                    const dotDescriptionDiv = document.createElement("div");
+                    const dotDescription = dot.dotDesc;
+                    dotDescriptionDiv.innerText = dotDescription;
+                    dotDiv.appendChild(dotDescriptionDiv);
+
+                    const diaryEntryDiv = document.createElement('div');
+                    const dotDiaryEntries = dot.diaryEntries;
+                    dotDiaryEntries.forEach(OneDiaryEntry => {
+                    const oneDiaryEntryDiv = document.createElement('div');
+                    oneDiaryEntryDiv.id = "findOneDiaryEntryDiv"
+                    oneDiaryEntryDiv.className = "oneDiaryEntryWrapper"
+
+                    const entryDateDiv = document.createElement('div');
+                    const entryDate = OneDiaryEntry.diaryDate;
+                    entryDateDiv.innerText = entryDate;
+
+                    const entryTimeDiv = document.createElement('div');
+                    const entryTime = OneDiaryEntry.diaryEntry.time_recorded;
+                    entryTimeDiv.innerText = entryTime;
+
+                    const entryMemoDiv = document.createElement('div');
+                    const entryMemo = OneDiaryEntry.diaryEntry.memo;
+                    entryMemoDiv.innerText = entryMemo;
+
+                    oneDiaryEntryDiv.appendChild(entryDateDiv);
+                    oneDiaryEntryDiv.appendChild(entryTimeDiv);
+                    oneDiaryEntryDiv.appendChild(entryMemoDiv);
+                    diaryEntryDiv.appendChild(oneDiaryEntryDiv);
+                    });
+                    dotDiv.appendChild(diaryEntryDiv);
+
+                    //replyDiv
+                    let replyDiv = document.createElement('div');
+                    replies.forEach(oneReply => {
+                      let dotId = oneReply.dotId;
+                      let replyId = oneReply.replyId;
+                      let userName = oneReply.userName;
+                      let reply = oneReply.reply;
+                      let parentReplyId = oneReply.parentReplyId;
+                      let level = oneReply.level;
+
+                      replyDiv.id = "replyDiv"+":"+dotId;
+                        // dotDiv 에 추가하기
+
+                      let oneReplyDiv = document.createElement('div');
+                      oneReplyDiv.id = "reply"+":"+replyId;
+                      oneReplyDiv.className = "oneReplyWrapper";
+                      oneReplyDiv.dataset.dotId = dotId;
+                      oneReplyDiv.dataset.replyId = replyId;
+                      // oneReplyDiv.dataset.parentReplyId = parentReplyId;
+
+                      let replyUserName = document.createElement('span');
+                      replyUserName.innerText = userName;
+                      let replyMemo = document.createElement('span');
+                      replyMemo.innerText = reply;
+                      let oneReplySaveBtn = document.createElement('button');
+                      oneReplySaveBtn.innerText = "re"
+                      oneReplySaveBtn.id = "oneReplySaveBtn"+":"+replyId;
+
+                      // reply에 대한 reply
+                      oneReplySaveBtn.addEventListener("click", oneReplyBtnClick, false);
+                      function oneReplyBtnClick(event){
+                        let eventParent = event.currentTarget.parentElement;
+                        let eventParentNode = event.currentTarget.parentNode;
+                        let dotId = eventParent.dataset.dotId;
+                        let parentReplyId = eventParent.dataset.replyId;
+
+                        let replyToReplyDiv = document.createElement("div");
+                        let replyToReplyInput = document.createElement("input");
+                        let replyToReplyBtn = document.createElement('button');
+                        replyToReplyBtn.innerText = 'saveReply';
+
+                        eventParentNode.appendChild(replyToReplyDiv);
+                        replyToReplyDiv.appendChild(replyToReplyInput);
+                        replyToReplyDiv.appendChild(replyToReplyBtn);
+
+                        replyToReplyBtn.addEventListener("click", saveReplyBtnClick, false);
+                        function saveReplyBtnClick(){
+                          url = "/api/createReplyToReply";
+                          replyData = {
+                            "reply" : replyToReplyInput.value,
+                            "dotId" : dotId,
+                            "parentReplyId" : parentReplyId,
+                          }
+
+                          fetch(url, {
+                            method : "POST",
+                            headers: {
+                              "Content-Type": "application/json",
+                              },
+                            body: JSON.stringify(replyData),
+                          })
+                          .then(response => {
+                            console.log(response);
+                            return response.json();
+                          })
+                          .then(data => {
+                            console.log("replyToReply is comming.")
+                            console.log(data);
+                            replyDiv.innerHTML = "";
+
+                            dot = data;
+
+                            dot.forEach(oneReply => {
+                            let dotId = oneReply.dotId;
+                            let replyId = oneReply.replyId;
+                            let userName = oneReply.userName;
+                            let reply = oneReply.reply;
+                            let parentReplyId = oneReply.parentReplyId;
+                            let level = oneReply.level;
+
+                            replyDiv.id = "dotReplyDiv"+":"+dotId;
+                              // dotDiv 에 추가하기
+
+                            let oneReplyDiv = document.createElement('div');
+                            oneReplyDiv.id = "oneDotReply"+":"+replyId;
+                            oneReplyDiv.className = "oneReplyWrapper";
+                            let replyUserName = document.createElement('span');
+                            replyUserName.innerText = userName;
+                            let replyMemo = document.createElement('span');
+                            replyMemo.innerText = reply;
+                            let oneReplySaveBtn = document.createElement('button');
+                            oneReplySaveBtn.innerText = "re"
+                            oneReplySaveBtn.id = "oneReplyBtn"+":"+replyId;
+                            //버튼id는 reply의 id이다.
+
+                            const indentSize = 20;
+                            let replyEmo = document.createElement('span');
+                            replyEmo.className = 'indent';
+                            replyEmo.style.display = 'inline-block';
+                            replyEmo.style.marginLeft = (level - 1) * indentSize + 'px'; // 깊이에 따라 왼쪽 마진 증가
+                            replyEmo.innerText = "↪ "; // 들여쓰기 표시용 아이콘 또는 기호
+
+
+                            oneReplyDiv.appendChild(replyEmo);
+                            oneReplyDiv.appendChild(replyUserName);
+                            oneReplyDiv.appendChild(replyMemo);
+                            oneReplyDiv.appendChild(oneReplySaveBtn);
+                            replyDiv.appendChild(oneReplyDiv);
+                          })
+                          // dotReplyDiv.id = 'myReplyDivSection'+':'+ dotId;
+                          dotDiv.appendChild(replyDiv);
+
+                          })
+                        }
+                      }
+
+                      const indentSize = 20;
+                      let replyEmo = document.createElement('span');
+                      replyEmo.className = 'indent';
+                      replyEmo.style.display = 'inline-block';
+                      replyEmo.style.marginLeft = (level - 1) * indentSize + 'px'; // 깊이에 따라 왼쪽 마진 증가
+                      replyEmo.innerText = "↪ "; // 들여쓰기 표시용 아이콘 또는 기호
+
+
+                      oneReplyDiv.appendChild(replyEmo);
+                      oneReplyDiv.appendChild(replyUserName);
+                      oneReplyDiv.appendChild(replyMemo);
+                      oneReplyDiv.appendChild(oneReplySaveBtn);
+                      replyDiv.appendChild(oneReplyDiv);
+                      })
+                    dotDiv.appendChild(replyDiv);
+
+                    // searchDot에 reply기능
+                    const replyBtn = document.createElement('button');
+                    replyBtn.innerText = 're';
+                    replyBtn.id = "replyBtn"+":"+dot.dotId;
+                    dotDiv.appendChild(replyBtn);
+                    replyBtn.addEventListener("click", clickReplyBtn, false );
+                    let replySection,
+                        replySaveBtn,
+                        replyInput
+
+                    function clickReplyBtn(event) {
+                      if(replySection == null){
+                        replySection = document.createElement('div');
+                        replySection.id = "replySection"+":"+dot.dotId
+                        replyInput = document.createElement('input');
+                        replyInput.id = "replyInput"+":"+dot.dotId;
+                        replySaveBtn = document.createElement('button');
+                        replySaveBtn.id = "replySaveBtn"+":"+"noReplyParent";
+                        replySaveBtn.innerText = 'saveReply';
+                        replySaveBtn.addEventListener("click", clickSaveReplyBtn, false);
+                        replySection.appendChild(replyInput);
+                        replySection.appendChild(replySaveBtn);
+                        console.log(event.currentTarget.parentNode);
+                        dotDiv = event.currentTarget.parentNode;
+                        dotDiv.appendChild(replySection);
+                      }
+                    }
+
+                    // Dot entries 바로 밑 re 버튼누르면
+                    function clickSaveReplyBtn(){
+                      data = {
+                        "reply" : replyInput.value,
+                        "dotId" : dot.dotId,
+                        // "parentReplyId" :
+                      }
+                      saveDotReplyUrl = "/api/createDotReply"
+                      fetch(saveDotReplyUrl, {
+                        method : "POST",
+                        headers: {
+                          "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify(data),
+                      })
+                      .then(response => {
+                        console.log(response);
+                        return response.json();
+                      })
+                      .then(data => {
+                        console.log("replydata : ", data);
+                        replyDiv.innerHTML = "";
+                        replySection.innerHTML = "";
+                        console.log(data);
+                        dot = data;
+
+                        dot.forEach(oneReply => {
+                        let dotId = oneReply.dotId;
+                        let replyId = oneReply.replyId;
+                        let userName = oneReply.userName;
+                        let reply = oneReply.reply;
+                        let parentReplyId = oneReply.parentReplyId;
+                        let level = oneReply.level;
+
+                        replyDiv.id = "dotReplyDiv"+":"+dotId;
+                          // dotDiv 에 추가하기
+
+                        let oneReplyDiv = document.createElement('div');
+                        oneReplyDiv.id = "oneDotReply"+":"+replyId;
+                        oneReplyDiv.className = "oneReplyWrapper";
+                        let replyUserName = document.createElement('span');
+                        replyUserName.innerText = userName;
+                        let replyMemo = document.createElement('span');
+                        replyMemo.innerText = reply;
+                        let oneReplySaveBtn = document.createElement('button');
+                        oneReplySaveBtn.innerText = "re"
+                        oneReplySaveBtn.id = "oneReplyBtn"+":"+replyId;
+                        //버튼id는 reply의 id이다.
+
+                        const indentSize = 20;
+                        let replyEmo = document.createElement('span');
+                        replyEmo.className = 'indent';
+                        replyEmo.style.display = 'inline-block';
+                        replyEmo.style.marginLeft = (level - 1) * indentSize + 'px'; // 깊이에 따라 왼쪽 마진 증가
+                        replyEmo.innerText = "↪ "; // 들여쓰기 표시용 아이콘 또는 기호
+
+
+                        oneReplyDiv.appendChild(replyEmo);
+                        oneReplyDiv.appendChild(replyUserName);
+                        oneReplyDiv.appendChild(replyMemo);
+                        oneReplyDiv.appendChild(oneReplySaveBtn);
+                        replyDiv.appendChild(oneReplyDiv);
+                      })
+                      // dotReplyDiv.id = 'myReplyDivSection'+':'+ dotId;
+                      dotDiv.appendChild(replyDiv);
+                      })
+                      }
+
+                    dotSection.appendChild(dotDiv);
+
+                  })
+                  // searchDotDiv.appendChild(searchDotSection);
+                  createPaginationButtons(dotList.length, pageSize);
+                }
+                searchDotRender(dotList, currentPage);
+
+            })
+            }
+
+    // dot pagination
+      function createPaginationButtons(totalItems, pageSize){
+                  console.log('totleItems : ', totalItems);
+                  console.log('pageSize : ', pageSize);
+
+                  const totalPages = Math.ceil(totalItems / pageSize);
+                  let paginationDiv = document.getElementById("resultPagenation");
+
+                  if(!paginationDiv) {
+                    console.log('we dont have paginaationDiv');
+                    paginationDiv = document.createElement("div");
+                    paginationDiv.id = "resultPagination";
+
+                    // dot search를 한다면 searchDotSection이 있을것이다.
+                    // 하지만 calendar페이지에 들어와서는 언제나 dotSection이 있다.
+                    const searchDotSection = document.getElementById("searchDotSection");
+                    if(searchDotSection) {
+                      searchDotSection.appendChild(paginationDiv);
+                      console.log('searchDotSection exists');
+                    }else {
+                      const dotSection = document.getElementById("dotSection");
+                      if(dotSection) {
+                        dotSection.appendChild(paginationDiv);
+                        console.log('dotSection exists');
+                      }
+                    }
+                }
+                  paginationDiv.innerHTML = "";
+
+                  for (let i = 1; i <= totalPages; i++){
+                    console.log('is this working?');
+                    const btn = document.createElement("button");
+                    btn.innerText = i;
+                    btn.addEventListener("click", () => {
+                      currentPage = i;
+                      searchDotRender(dotList, currentPage);
+                    });
+                    paginationDiv.appendChild(btn);
+                  }
+              }
+
+    // dot renderPage
+      function renderPage(currentPage, pageSize) {
+          console.log("function() renderPage");
+          const startIdx = (currentPage - 1) * pageSize;
+          const endIdx = currentPage * pageSize;
+          // dotDataList에서 startIdx부터 endIdx전까지 slice한다.
+          const pageItems = dotDataList.slice(startIdx, endIdx);
+          const dotSection = document.getElementById("dotSection");
+          dotSection.innerHTML = "";
+
+          pageItems.forEach(dot => {
+            // diary_entry 내용은 최신순으로 정렬된다. 정렬하면서 inplace되어 변수는 필요없다.
+            dot.diary_entries.sort((a,b) => { return new Date(b.diary_date) - new Date(a.diary_date);});
+            console.log(n, '번째 dot');
+            console.log(dot);
+            // tags
+            const dotSection = document.getElementById("dotSection");
+            dotSection.className = "dotSection";
+            // 하나의 dot은 dotDiv에 만들어진다.
+            const dotDiv = document.createElement("div");
+            let dotId = dot.dotId;
+            dotDiv.id = "myDotDiv"+":"+dotId;
+            dotDiv.className = "dotDiv";
+
+            const dotNameDiv = document.createElement("div");
+            const dotName = dot.dotName;
+            dotNameDiv.innerText = dotName;
+
+            const dotDescriptionDiv = document.createElement("div");
+            const dotDescription = dot.dotDescription;
+            dotDescriptionDiv.innerText = dotDescription;
+
+            const dotTags = dot.tags;
+            const dotTagDiv = document.createElement("div");
+            dotTagDiv.className = "dotTagDiv";
+            //for문안에 <p> tag만들어서 넣고 tagDiv에 appendchild하기
+              dotTags.forEach(tag => {
+                const tagNameSpan = document.createElement('span');
+                tagNameSpan.className = "tagNameSpan";
+                const tagName = tag;
+                tagNameSpan.innerHTML = "&nbsp;" + tagName + "&nbsp;";
+
+                dotTagDiv.appendChild(tagNameSpan);
+              })
+              dotDiv.appendChild(dotTagDiv);
+              dotDiv.appendChild(dotNameDiv);
+              dotDiv.appendChild(dotDescriptionDiv);
+
+            const diaryEntryDiv = document.createElement('div');
+            diaryEntryDiv.id = 'diaryEntryDiv'+':'+ dotId;
+            const dotDiaryEntries = dot.diary_entries;
+            dotDiaryEntries.forEach(diaryEntry => {
+              const oneDiaryEntryDiv = document.createElement('div');
+              oneDiaryEntryDiv.id = "oneDiaryEntryDiv"
+              oneDiaryEntryDiv.className = "oneDiaryEntryWrapper"
+
+              const entryDateDiv = document.createElement('div');
+              const entryDate = diaryEntry.diary_date;
+              entryDateDiv.innerText = entryDate;
+
+              const entryTimeDiv = document.createElement('div');
+              const entryTime = diaryEntry.time_recorded;
+              entryTimeDiv.innerText = entryTime;
+
+              const entryMemoDiv = document.createElement('div');
+              const entryMemo = diaryEntry.memo;
+              entryMemoDiv.innerText = entryMemo;
+
+              oneDiaryEntryDiv.appendChild(entryDateDiv);
+              oneDiaryEntryDiv.appendChild(entryTimeDiv);
+              oneDiaryEntryDiv.appendChild(entryMemoDiv);
+              diaryEntryDiv.appendChild(oneDiaryEntryDiv);
+            })
+            dotDiv.appendChild(diaryEntryDiv);
+
+            //reply section
+            let dotReplyDiv = document.createElement('div');
+            dot.replyData.forEach(oneReply => {
+              let dotId = oneReply.dotId;
+              let replyId = oneReply.replyId;
+              let userName = oneReply.userName;
+              let reply = oneReply.reply;
+              let parentReplyId = oneReply.parentReplyId;
+              let level = oneReply.level;
+
+              dotReplyDiv.id = "dotReplyDiv"+":"+dotId;
+                // dotDiv 에 추가하기
+
+              let oneReplyDiv = document.createElement('div');
+              oneReplyDiv.id = "oneDotReply"+":"+replyId;
+              oneReplyDiv.className = "oneReplyWrapper";
+              let replyUserName = document.createElement('span');
+              replyUserName.innerText = userName;
+              let replyMemo = document.createElement('span');
+              replyMemo.innerText = reply;
+              let oneReplySaveBtn = document.createElement('button');
+              oneReplySaveBtn.innerText = "re"
+              oneReplySaveBtn.id = "oneReplyBtn"+":"+replyId;
+              //버튼id는 reply의 id이다.
+
+              const indentSize = 20;
+              let replyEmo = document.createElement('span');
+              replyEmo.className = 'indent';
+              replyEmo.style.display = 'inline-block';
+              replyEmo.style.marginLeft = (level - 1) * indentSize + 'px'; // 깊이에 따라 왼쪽 마진 증가
+              replyEmo.innerText = "↪ "; // 들여쓰기 표시용 아이콘 또는 기호
+
+
+              oneReplyDiv.appendChild(replyEmo);
+              oneReplyDiv.appendChild(replyUserName);
+              oneReplyDiv.appendChild(replyMemo);
+              oneReplyDiv.appendChild(oneReplySaveBtn);
+              dotReplyDiv.appendChild(oneReplyDiv);
+            })
+            // dotReplyDiv.id = 'myReplyDivSection'+':'+ dotId;
+            dotDiv.appendChild(dotReplyDiv);
+
+            // dot remove button
+            const xBtn = document.createElement('button');
+            xBtn.innerText = 'X';
+            xBtn.id = dotId;
+            xBtn.addEventListener("click", removeDotFromDatabase , false);
+            dotDiv.appendChild(xBtn);
+
+            function removeDotFromDatabase() {
+              dotId = xBtn.id;
+              removeDotUrl = `/api/removeDot/${dotId}`;
+
+              fetch(removeDotUrl, {
+                method: 'GET',
+              })
+              .then(response => {
+                console.log('removeDot response : ', response);
+                return response.text();
+              })
+              .then(data => {
+                console.log('removeDot message : ', data);
+                window.location.href = "/user/profile"
+
+              })
+            }
+            dotSection.appendChild(dotDiv);
+            n += 1;
+          })
+          createPaginationButtons(dotDataList.length, pageSize);
+        }
+</script>
+
+<style>
+  .h2 {
+    text-align: center;
+    margin: 20px;
+  }
+  .calendar-body {
+    display: grid;
+    grid-template-columns: 1fr 1fr 5fr 1fr 1fr;
+  }
+  .arrow-l {
+    grid-column: 2;
+    grid-row: 1;
+
+    display: flex; /* Flexbox로 변경 */
+    justify-content: center; /* 수평 중앙 */
+    align-items: center; /* 수직 중앙 */
+  }
+
+  .cal-container {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  .arrow-r {
+    grid-column: 4;
+    grid-row: 1;
+
+    display: flex; /* Flexbox로 변경 */
+    justify-content: center; /* 수평 중앙 */
+    align-items: center; /* 수직 중앙 */
+  }
+
+  .calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    max-width: 600px;
+    margin: auto;
+    border: 1px solid rgb(255, 196, 0);
+    background-color: rgb(255, 151, 5);
+  }
+  .day-name {
+    font-weight: bold;
+    text-align: center;
+    padding: 8px 0;
+    background-color: #f7f3f3;
+    border: 1px dotted rgb(255, 242, 0);
+    /* border: 1px solid #ccc; */
+  }
+  .date-name {
+    text-align: center;
+    padding: 16px 0;
+    border: 1px dotted rgb(255, 196, 0);
+    background-color: rgb(249, 255, 199);
+  }
+  .red-font {
+    color: red;
+  }
+  a {
+    text-decoration-line: none;
+    text-decoration: none;
+    color: black;
+  }
+
+  .search-icon {
+    margin-top: 1rem;
+  }
+
+  .search-icon:hover {
+    cursor: pointer;
+  }
+
+  .add-dot-icon:hover {
+    background-color: rgb(186, 157, 214);
+    cursor: pointer;
+  }
+
+  .tag-name {
+    border-radius: 20px;
+    border: solid 0.1rem;
+    background-color: beige;
+    border-color: black;
+  }
+
+  .tag-name:hover {
+    cursor: pointer;
+  }
+
+  #createDotBtn {
+    background-color: #f7f3f3;
+  }
+
+  #createDotBtn:hover {
+    cursor: pointer;
+  }
+
+  .dotSection {
+    margin: 20px;
+    background-color: blanchedalmond;
+  }
+
+  .dotDiv {
+    margin-top: 10px;
+    border-width: 1px;
+    border-color: black;
+    border-style: dotted;
+  }
+
+  .oneDiaryEntryWrapper {
+    display: grid;
+    grid-template-columns: 2fr 2fr 3fr;
+    /* grid-gap: */
+  }
+
+  /* .oneReplyWrapper {
+    display: grid;
+    grid-template-columns: 1fr 2fr 3fr 1fr;
+  } */
+
+  .dotTagDiv {
+    display: flex;
+    justify-content: flex-end;
+    width: 100%;
+  }
+  .tagNameSpan {
+    border-radius: 20px;
+    border: solid 0.1rem;
+    border-color: black;
+  }
+
+  .oneReplyWrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* 요소들 사이 간격 */
+  }
+
+  .indent {
+    display: inline-block;
+    width: 20px; /* 들여쓰기 크기 */
+  }
+</style>
+{% endblock %}
