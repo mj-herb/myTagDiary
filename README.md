@@ -54,38 +54,6 @@ Dot은 여러 다이어리 메모를 하나의 주제나 관심사로 묶어 관
 - 저장 시 화면과 데이터베이스의 메모 목록 동기화
 - 사용자 ID를 기준으로 데이터 소유권 검증
 
-## 구현 화면
-
-### 로그인
-
-사용자는 username과 password를 입력하여 서비스에 로그인할 수 있습니다.
-
-
-
-### 달력
-
-다이어리가 작성된 날짜를 달력에서 확인할 수 있습니다.
-
-
-
-### 다이어리 작성
-
-날짜, 국가, 도시, 날씨와 시간별 메모를 기록할 수 있습니다.
-
-
-
-### 태그 기반 메모 관리
-
-메모에 태그를 추가하고, 태그를 기준으로 관련 기록을 관리할 수 있습니다.
-
-
-
-### Dot
-
-Dot에 태그를 연결하면 관련된 다이어리 메모를 주제별로 모아볼 수 있습니다.
-
-
-
 ## 기술 스택
 
 ### Backend
@@ -132,14 +100,12 @@ Dot에 태그를 연결하면 관련된 다이어리 메모를 주제별로 모�
 | POST | `/auth/register` | 회원가입 |
 | POST | `/auth/token` | 로그인 및 Access Token 발급 |
 | POST | `/auth/refresh` | Access Token 갱신 |
-| POST | `/auth/logout` | Refresh Token 폐기 |
-| GET | `/user/profile` | 사용자 달력 및 Dot 조회 |
+| GET | `/user/profile` | 사용자 달력 조회 |
 | POST | `/api/diary/save` | 다이어리 저장 및 동기화 |
 | GET | `/api/diary/{date}` | 날짜별 다이어리 조회 |
 | POST | `/api/dot` | Dot 생성 |
-| GET | `/api/dot` | Dot 목록 조회 |
 | PUT | `/api/dot/{dot_id}` | Dot 수정 |
-| DELETE | `/api/dot/{dot_id}` | Dot 삭제 |
+| GET | `/api/weather` | 날짜와 위치를 기준으로 날씨 정보 조회 |
 
 ## 데이터 흐름
 
@@ -157,4 +123,69 @@ JWT Access Token 발급
 Diary / DiaryEntry / Tag / Dot 조회 및 수정
   ↓
 PostgreSQL 저장
+
+
+```
+
+## 개발 현황
+
+### 구현 완료
+
+- [x] 회원가입
+- [x] 로그인 및 로그아웃
+- [x] JWT Access Token 발급
+- [x] Refresh Token 관리
+- [x] 다이어리 작성 및 조회
+- [x] 메모 CRUD
+- [x] 태그 연결
+- [x] Dot 생성 및 조회
+
+### 향후 계획
+
+- [ ] Dot 조회
+- [ ] 이미지 업로드 기능
+- [ ] 다이어리 검색 기능
+- [ ] 태그 자동완성
+- [ ] API 테스트 코드 추가
+- [ ] Docker 및 배포 환경 구성
+
+## 구현 화면
+
+### 로그인
+
+사용자는 username과 password를 입력하여 서비스에 로그인할 수 있습니다.<br>
+<img width="1791" height="425" alt="Screenshot 2026-09-12 at 10 08 19 AM" src="https://github.com/user-attachments/assets/cffd035c-72d4-49f3-9dd1-b7dd2de8b7da" />
+
+### 회원가입
+
+신규 사용자는 username, email, password를 입력하여 서비스에 회원가입 할 수 있습니다.<br>
+<img width="1784" height="447" alt="Screenshot 2026-09-12 at 10 08 30 AM" src="https://github.com/user-attachments/assets/82e52c65-b934-4e9e-b42a-0061d20e6f3d" />
+
+### 다이어리 달력
+
+다이어리가 작성된 날짜를 달력에서 체크표시로 확인할 수 있습니다.<br>
+<img width="1795" height="597" alt="Screenshot 2026-09-12 at 9 40 26 AM" src="https://github.com/user-attachments/assets/c657725e-e62d-4b2a-8596-d54a0945dcbe" />
+
+### 다이어리 작성
+
+날짜, 국가, 도시, 날씨와 시간별 메모를 기록할 수 있습니다.<br>
+자신이 위치하는 지역의 날씨를 확인하여 스케줄을 만들어 나갈수 있습니다.<br>
+메모에 태그를 추가하고, 태그를 기준으로 관련 기록을 관리할 수 있습니다.<br>
+<img width="1254" height="166" alt="Screenshot 2026-09-12 at 9 36 50 AM" src="https://github.com/user-attachments/assets/692c9b32-1b80-4a53-a83d-b9a902addc6f" />
+<img width="1072" height="757" alt="Screenshot 2026-09-12 at 9 38 05 AM" src="https://github.com/user-attachments/assets/b817738f-72c2-47fc-a0ed-6d09022ced39" />
+<img width="1111" height="661" alt="Screenshot 2026-09-12 at 9 40 06 AM" src="https://github.com/user-attachments/assets/cd122aad-c2d4-4cd0-b5d2-a5b051b94233" />
+
+### Dot
+
+Dot에 태그를 연결하면 관련된 다이어리 메모를 주제별로 모아볼 수 있습니다.<br>
+Dot(닻) 표시를 누르면 지금까지 기록한 태그들이 나타나고 저장버튼을 누르면 태그들을 1개 이상 조합하여 나만의 닻을 만들수 있습니다.<br>
+만들어진 닻은 닻 안에서 시간순으로 정열되어 나타납니다.<br>
+
+<img width="1794" height="584" alt="Screenshot 2026-09-12 at 10 18 13 AM" src="https://github.com/user-attachments/assets/6b359cfd-1a29-4a6a-a481-e25d44d7fd32" />
+<img width="1789" height="827" alt="Screenshot 2026-09-12 at 10 18 58 AM" src="https://github.com/user-attachments/assets/f0869fc3-ee9d-42fb-8de2-f2f127912f23" />
+
+
+
+
+
 
