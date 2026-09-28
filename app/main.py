@@ -31,6 +31,16 @@ import holidays
 from sqlalchemy import and_, delete, text
 from sqlalchemy.orm import joinedload
 from sqlalchemy.orm import selectinload
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+weather_api_key = os.getenv("WEATHER_API_KEY")
+visualcrossing_api_key = os.getenv(
+    "VISUALCROSSING_API_KEY"
+)
+
 
 
 app = FastAPI()
@@ -612,8 +622,6 @@ def get_user_region():
     }
     return user_region
 
-weather_api_key = "fd15a8298b5104a2d4f8b7c1c8006fd2"
-visualcrossing_api_key = "9KXGGHB7UFLYUXZCCWWFSCHDV" #historical api
 
 def get_user_city_weather(city, api_key):
     url = f'https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}'
